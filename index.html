@@ -51,7 +51,7 @@
             <button class="button button-primary" id="add-data-button" type="button"><span>＋</span> Add data</button>
           </div>
         </header>
-        <div class="workspace-scroll">
+          <div class="workspace-scroll" id="workspace-scroll">
           <section class="page-heading">
             <div>
               <div class="eyebrow"><span class="eyebrow-mark"></span> ANALYSIS WORKSPACE <span class="demo-tag" id="demo-tag">DEMO DATA</span></div>
@@ -60,11 +60,32 @@
             </div>
             <div class="heading-side">
               <div class="device-mode" aria-label="Workspace layout">
+                <button data-layout="auto" title="Automatic layout" aria-label="Automatic layout" type="button">Auto</button>
                 <button data-layout="compact" title="Compact view" type="button">▯</button>
                 <button data-layout="focus" title="Focus view" type="button">◧</button>
                 <button data-layout="studio" title="Studio view" type="button">▣</button>
               </div>
               <button id="share-button" class="button button-outline" type="button"><span>↗</span> Share</button>
+            </div>
+          </section>
+
+          <section class="workspace-controls" aria-label="Workspace arrangement">
+            <label>Focus arrangement <select id="panel-arrangement"><option value="chart-assistant">Chart · assistant</option><option value="assistant-chart">Assistant · chart</option></select></label>
+            <label class="panel-size-control">Navigation width <input id="navigation-size" type="range" min="180" max="300" step="10" value="238" /></label>
+            <label class="panel-size-control">Inspector width <input id="inspector-size" type="range" min="280" max="520" step="10" value="360" /></label>
+            <button id="toggle-navigation" class="button button-soft" type="button" aria-pressed="true">Hide navigation</button>
+            <button id="toggle-inspector" class="button button-soft" type="button" aria-pressed="true">Hide assistant</button>
+          </section>
+
+          <section class="compact-hub hidden" id="compact-hub" aria-label="Compact workspace home">
+            <div class="compact-welcome"><div class="compact-brand"><img src="/assets/tessera-mark.svg" alt="" width="28" height="28" /><span><b>Tessera</b><small id="compact-project-name"></small></span></div><button id="compact-open-studio" class="button button-soft" type="button">Open studio <span>↗</span></button></div>
+            <div class="compact-active-dataset"><div><span class="panel-kicker">ACTIVE DATASET</span><b id="compact-dataset-name">Northstar orders</b><small id="compact-dataset-meta"></small></div><button id="compact-upload" class="button button-primary" type="button">＋ Add data</button></div>
+            <form id="compact-ask-form" class="compact-ask"><textarea id="compact-question" rows="1" maxlength="1000" placeholder="Ask about your data…" aria-label="Ask about your data"></textarea><button class="send-button" aria-label="Send question" type="submit">↑</button></form>
+            <div class="compact-grid">
+              <section class="compact-section"><div class="compact-section-head"><b>Recent datasets</b><button data-view="data" type="button">View all</button></div><div id="compact-datasets" class="compact-list"></div></section>
+              <section class="compact-section"><div class="compact-section-head"><b>Things worth investigating</b><button data-view="findings" type="button">All findings</button></div><div id="compact-insights" class="compact-list"></div></section>
+              <section class="compact-section"><div class="compact-section-head"><b>Recent conversation</b><button id="compact-open-analysis" type="button">Continue →</button></div><div id="compact-conversation" class="compact-list"></div></section>
+              <section class="compact-section"><div class="compact-section-head"><b>Quick note</b><button data-view="notebook" type="button">Notebook</button></div><textarea id="compact-note" placeholder="Capture a thought…" aria-label="Quick note"></textarea><small class="compact-save-label">Saved with this project</small></section>
             </div>
           </section>
 
@@ -79,18 +100,20 @@
                     <option value="line">Line</option><option value="bar">Bar</option><option value="area">Area</option><option value="scatter">Scatter</option><option value="histogram">Histogram</option><option value="donut">Donut</option>
                   </select>
                   <button class="icon-button small" id="chart-download" aria-label="Download chart" title="Download chart" type="button">⇩</button>
-                  <button class="icon-button small" id="chart-menu" aria-label="Chart options" title="Chart options" type="button">···</button>
+                  <span class="chart-menu-wrap"><button class="icon-button small" id="chart-menu" aria-label="Chart options" aria-expanded="false" aria-controls="chart-options-menu" title="Chart options" type="button">···</button><span class="chart-options-menu hidden" id="chart-options-menu" role="menu"><button id="chart-menu-svg" role="menuitem" type="button">Download chart SVG</button><button id="chart-menu-csv" role="menuitem" type="button">Export filtered rows CSV</button></span></span>
                 </div>
               </div>
-              <div class="axis-controls"><label>Horizontal <select id="x-column"></select></label><span>×</span><label>Measure <select id="y-column"></select></label><span class="chart-note">Tap a point to ask about it</span></div>
-              <div id="chart-container" class="chart-container" role="img" aria-label="Interactive dataset chart"></div>
+              <div class="axis-controls"><label>Horizontal <select id="x-column"></select></label><span>×</span><label>Measure <select id="y-column"></select></label><span class="chart-note" id="chart-note">Select a mark for context</span><button id="ask-selected-point" class="inline-action hidden" type="button">Ask about this</button><button id="filter-selected-point" class="inline-action hidden" type="button">Filter to this value</button><button id="explore-group" class="inline-action hidden" type="button">Explore this group</button></div>
+              <div class="chart-navigation" aria-label="Chart viewport controls"><button id="chart-pan-left" class="tool-button" aria-label="Pan chart left" title="Pan left" type="button">←</button><label for="chart-zoom">Zoom <input id="chart-zoom" type="range" min="1" max="8" step="0.5" value="1" /></label><button id="chart-pan-right" class="tool-button" aria-label="Pan chart right" title="Pan right" type="button">→</button><button id="chart-reset-view" class="inline-action" type="button">Reset view</button></div>
+              <div id="filter-chips" class="filter-chips" aria-label="Active data filters"></div>
+              <div id="chart-container" class="chart-container" role="group" aria-label="Interactive dataset chart"></div>
               <div class="chart-legend" id="chart-legend"></div>
             </section>
 
             <aside class="panel analyst-panel" aria-labelledby="analyst-title">
               <div class="analyst-head">
-                <span class="analyst-symbol">✳</span><div><div class="panel-kicker">YOUR ANALYST</div><h2 id="analyst-title">A closer look</h2></div>
-                <button class="icon-button small" id="assistant-menu" title="Assistant options" type="button">···</button>
+                <span class="analyst-symbol">✳</span><div><div class="panel-kicker">YOUR ANALYST</div><h2 id="analyst-title">A closer look</h2></div><select id="conversation-branch" aria-label="Conversation branch"><option value="main">Main investigation</option></select>
+                <button class="icon-button small" id="assistant-menu" title="Start a new conversation branch" aria-label="Start a new conversation branch" type="button">＋</button>
               </div>
               <div class="analyst-scroll" id="analyst-feed">
                 <div class="assistant-intro"><div class="assistant-mark">✳</div><div><strong>Here’s what stands out</strong><small>Based on the active dataset</small></div></div>
@@ -100,7 +123,7 @@
               <div class="suggestions" id="suggestion-list"></div>
               <form class="ask-form" id="ask-form">
                 <textarea id="question-input" rows="1" maxlength="1000" placeholder="Ask about this dataset…" aria-label="Ask a question about this dataset"></textarea>
-                <div class="ask-toolbar"><span><span class="privacy-icon">⌑</span> <span id="privacy-hint">Summary only</span></span><button class="send-button" id="send-question" aria-label="Send question" type="submit">↑</button></div>
+                <div class="ask-toolbar"><span><span class="privacy-icon">⌑</span> <span id="privacy-hint">Summary only</span></span><button class="button button-soft cancel-question hidden" id="cancel-question" type="button">Stop</button><button class="send-button" id="send-question" aria-label="Send question" type="submit">↑</button></div>
               </form>
               <div class="provider-caption"><span class="status-dot" id="ai-status-dot"></span><span id="ai-provider-label">Local analysis · private by default</span><button id="provider-shortcut" type="button">Settings</button></div>
             </aside>
@@ -120,9 +143,14 @@
             <div class="panel-header notebook-header"><div><div class="panel-kicker">FIELD NOTES</div><h2>Keep the thread of thought.</h2></div><span class="autosave-note"><span class="status-dot"></span> Saved locally</span></div>
             <div class="notebook-grid">
               <div class="note-writing"><label for="note-input">Project notes</label><textarea id="note-input" placeholder="Capture a thought, a question, or the next thing to explore…"></textarea><div class="note-meta">Private to this device · autosaves as you write</div></div>
-              <div class="sketch-card"><div class="sketch-header"><div><b>Insight sketch</b><small>Draw with touch, mouse or supported stylus</small></div><div class="sketch-tools"><button class="tool-button active" data-pen="pen" title="Pen" type="button">✎</button><button class="tool-button" data-pen="eraser" title="Eraser" type="button">⌫</button><button id="clear-canvas" class="tool-button" title="Clear drawing" type="button">↻</button></div></div><canvas id="drawing-canvas" aria-label="Drawing canvas"></canvas><div class="note-meta">Pointer Events input · Browser does not expose PencilKit features</div></div>
+              <div class="sketch-card"><div class="sketch-header"><div><b>Insight sketch</b><small id="notebook-link-label">Linked to this project</small></div><div class="sketch-tools">
+                <button class="tool-button active" data-pen="pen" aria-label="Pen" title="Pen" type="button">✎</button><button class="tool-button" data-pen="highlighter" aria-label="Highlighter" title="Highlighter" type="button">▰</button><button class="tool-button" data-pen="eraser" aria-label="Eraser" title="Eraser" type="button">⌫</button><button class="tool-button" data-pen="lasso" aria-label="Lasso selection" title="Lasso selection" type="button">◯</button><button class="tool-button" data-pen="pan" aria-label="Pan canvas" title="Pan canvas" type="button">✋</button>
+                <button class="tool-button" data-pen="line" aria-label="Line" title="Line" type="button">／</button><button class="tool-button" data-pen="arrow" aria-label="Arrow" title="Arrow" type="button">↗</button><button class="tool-button" data-pen="rectangle" aria-label="Rectangle" title="Rectangle" type="button">▱</button><button class="tool-button" data-pen="ellipse" aria-label="Ellipse" title="Ellipse" type="button">◯</button>
+                <input id="pen-color" class="pen-color" type="color" value="#5146e5" aria-label="Ink color" /><input id="pen-width" class="pen-width" type="range" min="1" max="12" value="3" aria-label="Stroke width" />
+                <button id="undo-stroke" class="tool-button" aria-label="Undo stroke" title="Undo" type="button">↶</button><button id="redo-stroke" class="tool-button" aria-label="Redo stroke" title="Redo" type="button">↷</button><button id="delete-selection" class="tool-button" aria-label="Delete selected strokes" title="Delete selection" type="button">⌫</button><button id="zoom-out" class="tool-button" aria-label="Zoom out" title="Zoom out" type="button">−</button><button id="zoom-in" class="tool-button" aria-label="Zoom in" title="Zoom in" type="button">＋</button><button id="reset-canvas-view" class="tool-button" aria-label="Reset canvas view" title="Fit canvas" type="button">⤢</button><button id="clear-canvas" class="tool-button" aria-label="Clear drawing" title="Clear drawing" type="button">↻</button>
+              </div></div><div class="canvas-viewport"><canvas id="drawing-canvas" aria-label="Research drawing canvas. Use a mouse, finger or supported stylus to draw."></canvas></div><div class="note-meta">Pressure and tilt are used when available. Native PencilKit and handwriting recognition are not available in this web app.</div></div>
             </div>
-            <div class="notebook-context"><span class="context-glyph">◷</span><span><b>Connected to this analysis</b><small>Your note stays with the current project and dataset.</small></span><button data-view="overview" type="button">Return to analysis →</button></div>
+            <div class="notebook-context"><span class="context-glyph">◷</span><span><b>Connected to this analysis</b><small>Your note stays with the current project and dataset.</small></span><button id="ask-annotation-context" class="hidden" type="button">Ask about linked point</button><button data-view="overview" type="button">Return to analysis →</button></div>
           </section>
 
           <section class="panel reports-panel hidden" id="reports-panel">
@@ -141,7 +169,8 @@
           <label class="setting-row"><span><b>AI provider</b><small>API keys are configured on the server</small></span><select id="provider-select"><option value="auto">Automatic</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic Claude</option></select></label>
           <label class="setting-row"><span><b>Include sample rows</b><small>Send up to five rows with questions</small></span><input id="sample-consent" type="checkbox" /></label>
           <div class="settings-status" id="provider-status">Checking server configuration…</div>
-          <div class="settings-note"><b>Your data stays local by default.</b><p>Files, notes and calculations stay in this browser. When you ask a provider, only the prompt and computed summary are sent unless sample rows are enabled.</p></div>
+          <div class="settings-note"><b>Your data stays local by default.</b><p>Dataset rows and deterministic calculations run in this browser. A provider receives your question, a compact profile and the results of any local calculation it requested. Up to five sample rows are sent only when you opt in.</p></div>
+          <button id="recover-workspace" class="button button-soft" type="button">Restore previous saved revision</button>
           <button id="clear-workspace" class="button button-danger" type="button">Clear local workspace</button>
         </div>
       </dialog>

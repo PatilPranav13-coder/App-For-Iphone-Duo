@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { answerWithProvider, configuredProviders } from './providers/index.js';
 import { parseXlsxBuffer } from './xlsx.js';
+import { ANALYSIS_TOOL_SPECS } from '../src/analysis/tool-registry.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 loadEnvironment(path.join(root, '.env'));
@@ -55,19 +56,33 @@ async function handleAssistant(request, response) {
   if (!context) return sendJson(response, 400, { error: 'Analysis context is invalid or too large.' });
   const history = normalizeHistory(body.history);
   if (!history) return sendJson(response, 400, { error: 'Conversation history is invalid.' });
+  const toolTrace = normalizeToolTrace(body.toolTrace, body.provider);
+  if (!toolTrace) return sendJson(response, 400, { error: 'Analysis tool history is invalid or exceeds its limits.' });
+  const controller = new AbortController();
+  const timeout = setTimeout(function () { controller.abort(new Error('AI provider request timed out.')); }, 45_000);
+  const abortOnDisconnect = function () { if (!response.writableEnded) controller.abort(new Error('Client disconnected.')); };
+  request.on('aborted', abortOnDisconnect);
+  response.on('close', abortOnDisconnect);
   try {
     const answer = await answerWithProvider({
       requestedProvider: body.provider,
       question: body.question.trim(),
       context,
       history,
-      signal: AbortSignal.timeout(45_000)
+      toolTrace,
+      allowTools: body.allowTools !== false,
+      signal: controller.signal
     });
     successfulAssistantRequests += 1;
     return sendJson(response, 200, answer);
   } catch (error) {
+    if (response.destroyed || controller.signal.reason?.message === 'Client disconnected.') return;
     const status = Number.isInteger(error.status) ? error.status : 502;
     return sendJson(response, status, { error: status >= 500 ? safeMessage(error.message) : error.message });
+  } finally {
+    clearTimeout(timeout);
+    request.off('aborted', abortOnDisconnect);
+    response.off('close', abortOnDisconnect);
   }
 }
 
@@ -115,8 +130,22 @@ function validateContext(value, includeSamples) {
     },
     findings,
     chart: sanitizeChart(value.chart),
-    selectedPoint: sanitizeSelectedPoint(value.selectedPoint)
+    selectedPoint: sanitizeSelectedPoint(value.selectedPoint),
+    dataset: value.dataset && typeof value.dataset === 'object' ? {
+      id: typeof value.dataset.id === 'string' ? value.dataset.id.slice(0, 100) : '',
+      name: typeof value.dataset.name === 'string' ? value.dataset.name.slice(0, 120) : '',
+      version: finiteNonnegative(value.dataset.version)
+    } : null,
+    activeFilters: Array.isArray(value.activeFilters) ? value.activeFilters.slice(0, 20).map(function (filter) {
+      if (!filter || typeof filter.column !== 'string' || typeof filter.operator !== 'string') return null;
+      return { column: filter.column.slice(0, 120), operator: filter.operator.slice(0, 30), value: String(filter.value ?? '').slice(0, 200) };
+    }) : [],
+    conversationBranchId: typeof value.conversationBranchId === 'string' ? value.conversationBranchId.slice(0, 100) : 'main',
+    priorCalculations: Array.isArray(value.priorCalculations) ? value.priorCalculations.slice(-2) : []
   };
+  if (context.activeFilters.some(function (filter) { return !filter; })) return null;
+  if (context.priorCalculations.some(function (entry) { return !entry || typeof entry.question !== 'string' || !Array.isArray(entry.calculations) || entry.calculations.length > 4; })) return null;
+  if (JSON.stringify(context.priorCalculations).length > 12_000) return null;
   if (includeSamples) {
     if (!Array.isArray(value.sampleRows) || value.sampleRows.length > 5) return null;
     const safeRows = value.sampleRows.map(function (row) {
@@ -152,6 +181,54 @@ function normalizeHistory(history) {
     normalized.push({ role: item.role, content: item.content });
   }
   return normalized;
+}
+
+function normalizeToolTrace(trace, provider) {
+  if (trace === undefined) return [];
+  if (!Array.isArray(trace) || trace.length > 4) return null;
+  const allowed = new Set(ANALYSIS_TOOL_SPECS.map(function (tool) { return tool.name; }));
+  const normalized = [];
+  for (const round of trace) {
+    if (!round || !Array.isArray(round.calls) || !Array.isArray(round.results) || !round.calls.length || round.calls.length > 3 || round.results.length !== round.calls.length) return null;
+    const calls = [];
+    const results = [];
+    for (let index = 0; index < round.calls.length; index += 1) {
+      const call = round.calls[index];
+      const result = round.results[index];
+      if (!call || !allowed.has(call.name) || typeof call.callId !== 'string' || !call.callId || call.callId.length > 160 || !call.arguments || typeof call.arguments !== 'object' || Array.isArray(call.arguments)) return null;
+      if (!result || result.callId !== call.callId || result.callId.length > 160 || typeof result.error !== 'string' && result.error !== null && result.error !== undefined) return null;
+      const output = result.output;
+      if (output === undefined || JSON.stringify(output).length > 12_000) return null;
+      calls.push({ callId: call.callId, name: call.name, arguments: call.arguments });
+      results.push({ callId: result.callId, output, error: result.error ? String(result.error).slice(0, 500) : null });
+    }
+    const providerState = normalizeProviderState(round.providerState, provider, calls);
+    if (round.providerState && !providerState) return null;
+    normalized.push({ calls, results, ...(providerState ? { providerState } : {}) });
+  }
+  if (JSON.stringify(normalized).length > 120_000) return null;
+  return normalized;
+}
+
+function normalizeProviderState(value, provider, calls) {
+  if (value === undefined || value === null) return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value) || JSON.stringify(value).length > 20_000) return null;
+  if (provider === 'openai' && value.type === 'openai' && Array.isArray(value.outputItems) && value.outputItems.length <= 16) {
+    const outputItems = value.outputItems;
+    if (outputItems.some(function (item) { return !item || typeof item !== 'object' || !['reasoning', 'function_call', 'message'].includes(item.type); })) return null;
+    const functions = outputItems.filter(function (item) { return item.type === 'function_call'; });
+    if (functions.length !== calls.length || functions.some(function (item, index) {
+      return item.call_id !== calls[index].callId || item.name !== calls[index].name || typeof item.arguments !== 'string';
+    })) return null;
+    return { type: 'openai', outputItems };
+  }
+  if (provider === 'anthropic' && value.type === 'anthropic' && Array.isArray(value.content) && value.content.length <= 24) {
+    const toolUses = value.content.filter(function (item) { return item?.type === 'tool_use'; });
+    if (toolUses.length !== calls.length || toolUses.some(function (item, index) { return item.id !== calls[index].callId || item.name !== calls[index].name; })) return null;
+    if (value.content.some(function (item) { return !item || typeof item !== 'object' || !['text', 'tool_use', 'thinking', 'redacted_thinking'].includes(item.type); })) return null;
+    return { type: 'anthropic', content: value.content };
+  }
+  return null;
 }
 
 function finiteNonnegative(value) { return Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0; }

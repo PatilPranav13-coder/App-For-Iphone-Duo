@@ -8,7 +8,7 @@ export function configuredProviders() {
   };
 }
 
-export async function answerWithProvider({ requestedProvider, question, context, history, signal }) {
+export async function answerWithProvider({ requestedProvider, question, context, history, toolTrace = [], allowTools = true, signal }) {
   const available = configuredProviders();
   const selected = requestedProvider === 'auto'
     ? (available.openai ? 'openai' : available.anthropic ? 'anthropic' : null)
@@ -20,14 +20,14 @@ export async function answerWithProvider({ requestedProvider, question, context,
   }
   if (selected === 'openai') {
     try {
-      return await askOpenAI({ apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL, question, context, history, signal });
+      return await askOpenAI({ apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL, question, context, history, toolTrace, allowTools, signal });
     } catch (error) {
       if (requestedProvider !== 'auto' || !available.anthropic) throw error;
-      return askAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL, question, context, history, signal });
+      return askAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL, question, context, history, toolTrace, allowTools, signal });
     }
   }
   if (selected === 'anthropic') {
-    return askAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL, question, context, history, signal });
+    return askAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL, question, context, history, toolTrace, allowTools, signal });
   }
   const error = new Error('Unknown AI provider.');
   error.status = 400;

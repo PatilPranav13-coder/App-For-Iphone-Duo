@@ -18,17 +18,24 @@ export function renderChart(container, rows, settings, onPoint) {
   let points = values.map(function (item) { return { xLabel: item.label, yValue: item.value, count: item.count }; });
   if (chartType === 'histogram') points = histogram(rows, settings.y);
   if (chartType === 'scatter') {
-    const valid = rows.map(function (row, i) { return { xLabel: row[settings.x], yValue: Number(row[settings.y]), count: 1, raw: row, i }; })
-      .filter(function (item) { return Number.isFinite(item.yValue) && Number.isFinite(Number(item.xLabel)); });
+    const valid = rows.map(function (row, i) { return { xLabel: row[settings.x], yValue: chartNumber(row[settings.y]), count: 1, raw: row, i }; })
+      .filter(function (item) { return Number.isFinite(item.yValue) && Number.isFinite(chartNumber(item.xLabel)); });
     points = decimate(valid, 600);
   }
   const totalPoints = points.length;
+  const zoom = Math.max(1, Math.min(8, Number(settings.zoom) || 1));
+  if (chartType !== 'donut' && zoom > 1 && points.length > 1) {
+    const windowSize = Math.max(2, Math.ceil(points.length / zoom));
+    const offset = Math.max(0, Math.min(1, Number(settings.offset) || 0));
+    const start = Math.round(offset * (points.length - windowSize));
+    points = points.slice(start, start + windowSize);
+  }
   if (chartType === 'bar') points = points.slice(0, 40);
   if (chartType === 'donut' && points.length > 7) {
     const ordered = points.slice().sort(function (a, b) { return b.yValue - a.yValue; });
     const head = ordered.slice(0, 6);
     const rest = ordered.slice(6);
-    points = head.concat([{ label: 'Other', yValue: rest.reduce(function (sum, item) { return sum + item.yValue; }, 0), count: rest.reduce(function (sum, item) { return sum + item.count; }, 0) }]);
+    points = head.concat([{ label: 'Other', xLabel: 'Other', yValue: rest.reduce(function (sum, item) { return sum + item.yValue; }, 0), count: rest.reduce(function (sum, item) { return sum + item.count; }, 0), otherBucket: true }]);
   }
   else if (chartType === 'line' || chartType === 'area') points = decimate(points, 800);
   container.dataset.pointsShown = String(points.length);
@@ -37,9 +44,11 @@ export function renderChart(container, rows, settings, onPoint) {
     container.innerHTML = '<div class="chart-empty">Choose a numeric column and a grouping to build a chart.</div>';
     return;
   }
-  if (chartType === 'donut') return drawDonut(container, points, onPoint);
+  const summary = chartSummary(chartType, points, settings);
+  container.setAttribute('aria-label', summary);
+  if (chartType === 'donut') return drawDonut(container, points, settings, onPoint);
 
-  const svg = element('svg', { viewBox: '0 0 ' + width + ' ' + height, class: 'chart-svg', role: 'presentation' });
+  const svg = element('svg', { viewBox: '0 0 ' + width + ' ' + height, class: 'chart-svg', role: 'group', 'aria-label': summary });
   const allValues = points.map(function (item) { return item.yValue; });
   let minY = Math.min.apply(null, allValues);
   let maxY = Math.max.apply(null, allValues);
@@ -75,13 +84,13 @@ export function renderChart(container, rows, settings, onPoint) {
         rx: Math.min(5, barWidth / 3), class: 'chart-bar', tabindex: 0, role: 'button',
         'aria-label': point.xLabel + ', ' + point.yValue
       });
-      attachPoint(rect, point, settings.y, onPoint, chartType);
+      attachPoint(rect, point, settings.y, onPoint, chartType, settings);
       svg.append(rect);
     });
   } else if (chartType === 'scatter') {
     points.forEach(function (point) {
-      const dot = element('circle', { cx: x(points.indexOf(point)), cy: y(point.yValue), r: 4, class: 'chart-point', tabindex: 0, role: 'button' });
-      attachPoint(dot, point, settings.y, onPoint, chartType);
+      const dot = element('circle', { cx: x(points.indexOf(point)), cy: y(point.yValue), r: 4, class: 'chart-point', tabindex: 0, role: 'button', 'aria-label': String(point.xLabel) + ': ' + String(point.yValue) });
+      attachPoint(dot, point, settings.y, onPoint, chartType, settings);
       svg.append(dot);
     });
   } else {
@@ -91,8 +100,8 @@ export function renderChart(container, rows, settings, onPoint) {
     }
     svg.append(element('path', { d: lineD, class: 'chart-line' }));
     points.forEach(function (point, index) {
-      const dot = element('circle', { cx: x(index), cy: y(point.yValue), r: 4.2, class: 'chart-point', tabindex: 0, role: 'button' });
-      attachPoint(dot, point, settings.y, onPoint, chartType);
+      const dot = element('circle', { cx: x(index), cy: y(point.yValue), r: 4.2, class: 'chart-point', tabindex: 0, role: 'button', 'aria-label': String(point.xLabel) + ': ' + String(point.yValue) });
+      attachPoint(dot, point, settings.y, onPoint, chartType, settings);
       svg.append(dot);
     });
   }
@@ -117,19 +126,37 @@ export function downloadChartSvg(container) {
 }
 
 function histogram(rows, column) {
-  const values = rows.map(function (row) { return Number(row[column]); }).filter(Number.isFinite);
+  const values = rows.map(function (row) { return chartNumber(row[column]); }).filter(Number.isFinite);
   if (!values.length) return [];
-  const min = Math.min.apply(null, values);
-  const max = Math.max.apply(null, values);
+  const bounds = values.reduce(function (result, value) {
+    result.min = Math.min(result.min, value);
+    result.max = Math.max(result.max, value);
+    return result;
+  }, { min: Infinity, max: -Infinity });
+  const min = bounds.min;
+  const max = bounds.max;
+  if (min === max) {
+    const label = formatMoneyOrNumber(min, column);
+    return [{ label, xLabel: label, lower: min, upper: max, yValue: values.length, count: values.length }];
+  }
   const bins = Math.min(10, Math.max(5, Math.ceil(Math.sqrt(values.length))));
   const step = (max - min) / bins || 1;
-  const buckets = Array.from({ length: bins }, function (_, i) { return { label: formatMoneyOrNumber(min + i * step, column), yValue: 0, count: 0 }; });
+  const buckets = Array.from({ length: bins }, function (_, i) {
+    const label = formatMoneyOrNumber(min + i * step, column);
+    return { label, xLabel: label, lower: min + i * step, upper: i === bins - 1 ? max : min + (i + 1) * step, yValue: 0, count: 0 };
+  });
   values.forEach(function (value) {
     const index = Math.min(bins - 1, Math.floor((value - min) / step));
     buckets[index].yValue += 1;
     buckets[index].count += 1;
   });
   return buckets;
+}
+
+function chartNumber(value) {
+  if (value === null || value === undefined || value === '') return NaN;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : NaN;
 }
 
 function decimate(points, limit) {
@@ -139,10 +166,10 @@ function decimate(points, limit) {
   });
 }
 
-function drawDonut(container, points, onPoint) {
+function drawDonut(container, points, settings, onPoint) {
   const top = points.slice().sort(function (a, b) { return b.yValue - a.yValue; }).slice(0, 7);
   const total = top.reduce(function (sum, item) { return sum + Math.max(0, item.yValue); }, 0);
-  const svg = element('svg', { viewBox: '0 0 760 294', class: 'chart-svg donut-svg', role: 'presentation' });
+  const svg = element('svg', { viewBox: '0 0 760 294', class: 'chart-svg donut-svg', role: 'group', 'aria-label': container.getAttribute('aria-label') || 'Donut chart' });
   let angle = -Math.PI / 2;
   const cx = 188;
   const cy = 147;
@@ -157,7 +184,7 @@ function drawDonut(container, points, onPoint) {
       fill: COLORS[index % COLORS.length],
       class: 'donut-slice', tabindex: 0, role: 'button'
     });
-    attachPoint(path, point, '', onPoint, 'donut');
+    attachPoint(path, point, '', onPoint, 'donut', settings);
     svg.append(path);
     const label = textNode(340, 61 + index * 31, point.label + '  ·  ' + Math.round(fraction * 100) + '%', 'donut-label');
     label.style.fill = COLORS[index % COLORS.length];
@@ -178,18 +205,46 @@ function arcPath(cx, cy, outer, inner, start, end, large) {
     ' L ' + c[0] + ' ' + c[1] + ' A ' + inner + ' ' + inner + ' 0 ' + large + ' 0 ' + d[0] + ' ' + d[1] + ' Z';
 }
 
-function attachPoint(node, point, measure, onPoint, type) {
-  const value = formatMoneyOrNumber(point.yValue, measure);
+function attachPoint(node, point, measure, onPoint, type, settings) {
+  const value = type === 'histogram' ? formatCount(point.yValue) : formatMoneyOrNumber(point.yValue, measure);
   const title = element('title');
-  title.textContent = point.xLabel + ': ' + value;
+  title.textContent = type === 'histogram'
+    ? point.xLabel + '–' + formatMoneyOrNumber(point.upper, measure) + ': ' + value + ' records'
+    : point.xLabel + ': ' + value;
   node.append(title);
-  node.addEventListener('click', function () { onPoint({ label: String(point.xLabel), value, count: point.count, type }); });
+  const selected = type === 'scatter' && Number.isInteger(point.i)
+    ? settings.selectedPoint?.rowIndex === point.i
+    : type === 'histogram'
+      ? settings.selectedPoint?.type === 'histogram' && settings.selectedPoint?.lower === point.lower && settings.selectedPoint?.upper === point.upper
+      : settings.selectedPoint?.label === String(point.xLabel) && String(settings.selectedPoint?.value) === String(value);
+  if (selected) node.classList.add('selected');
+  node.setAttribute('aria-pressed', String(selected));
+  const filter = type === 'histogram' || type === 'scatter' || (type === 'donut' && point.xLabel === 'Other')
+    ? null
+    : { column: settings.x, value: String(point.xLabel) };
+  const selection = {
+    label: type === 'histogram' ? String(point.xLabel) + '–' + formatMoneyOrNumber(point.upper, measure) : String(point.xLabel), value, count: point.count, type, filter,
+    rowIndex: type === 'scatter' ? point.i : undefined,
+    xValue: type === 'scatter' ? point.raw?.[settings.x] : undefined,
+    yValue: type === 'scatter' ? point.yValue : undefined,
+    lower: type === 'histogram' ? point.lower : undefined,
+    upper: type === 'histogram' ? point.upper : undefined,
+    otherBucket: Boolean(point.otherBucket)
+  };
+  node.addEventListener('click', function () { onPoint(selection); });
   node.addEventListener('keydown', function (event) {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      onPoint({ label: String(point.xLabel), value, count: point.count, type });
+      onPoint(selection);
     }
   });
+}
+
+function chartSummary(type, points, settings) {
+  if (!points.length) return 'No chart data is available.';
+  const values = points.map(function (item) { return item.yValue; }).filter(Number.isFinite);
+  const total = values.reduce(function (sum, value) { return sum + value; }, 0);
+  return (type + ' chart of ' + settings.y + ' by ' + settings.x + '. ' + points.length + ' visible marks; aggregate value ' + formatMoneyOrNumber(total, settings.y) + '. Select a mark to inspect it.');
 }
 
 function axisFormat(value, column) {
