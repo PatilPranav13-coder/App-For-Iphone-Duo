@@ -1,0 +1,15 @@
+{
+  "name": "tessera-data-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch server/index.js",
+    "build": "node scripts/build.js",
+    "start": "node server/index.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

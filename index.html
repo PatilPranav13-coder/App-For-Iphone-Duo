@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f5f6fa" />
+    <meta name="description" content="Tessera is a calm, local-first studio for data analysis, visual discovery and notes." />
+    <link rel="icon" type="image/svg+xml" href="/assets/icon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <title>Tessera — Data studio</title>
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <aside class="sidebar" aria-label="Main navigation">
+        <a class="brand" href="#" aria-label="Tessera home">
+          <img src="/assets/tessera-mark.svg" alt="" width="34" height="34" />
+          <span class="brand-copy"><strong>Tessera</strong><small>DATA STUDIO</small></span>
+        </a>
+        <button class="workspace-switcher" id="project-switcher" type="button">
+          <span class="project-avatar">N</span><span><b>Northstar research</b><small>Personal workspace</small></span><span class="switch-caret">⌄</span>
+        </button>
+        <div class="nav-label">WORKSPACE</div>
+        <nav class="main-nav">
+          <button class="nav-item active" data-view="overview" type="button"><span class="nav-icon">◫</span> Overview</button>
+          <button class="nav-item" data-view="data" type="button"><span class="nav-icon">▤</span> Data explorer <span class="nav-count" id="dataset-count">1</span></button>
+          <button class="nav-item" data-view="notebook" type="button"><span class="nav-icon">▧</span> Notebook</button>
+          <button class="nav-item" data-view="findings" type="button"><span class="nav-icon">✳</span> Findings</button>
+          <button class="nav-item" data-view="reports" type="button"><span class="nav-icon">▥</span> Reports</button>
+        </nav>
+        <div class="nav-label project-label">PROJECTS <button id="new-project" class="inline-icon" aria-label="Create project" type="button">＋</button></div>
+        <button class="project-link active" type="button"><span class="project-dot dot-violet"></span> Q3 revenue review</button>
+        <button class="project-link" type="button"><span class="project-dot dot-blue"></span> Customer retention</button>
+        <button class="project-link" type="button"><span class="project-dot dot-amber"></span> Product research</button>
+        <div class="sidebar-bottom">
+          <div class="storage-card"><div class="storage-icon">⌂</div><div><b>Saved on this device</b><small>Private · auto-saved</small></div><span class="status-dot"></span></div>
+          <button class="nav-item settings-link" id="open-settings" type="button"><span class="nav-icon">⚙</span> Settings</button>
+          <button class="profile-button" id="profile-button" type="button"><span class="user-avatar">PP</span><span><b>Pranav Patil</b><small>Local workspace</small></span><span class="switch-caret">···</span></button>
+        </div>
+      </aside>
+
+      <main class="main-area">
+        <header class="topbar">
+          <button class="mobile-menu" id="mobile-menu" aria-label="Open navigation" type="button">☰</button>
+          <div class="breadcrumbs"><span>Projects</span><span class="crumb-sep">/</span><strong>Q3 revenue review</strong></div>
+          <div class="topbar-actions">
+            <div class="save-state"><span class="status-dot"></span><span id="save-label">All changes saved</span></div>
+            <button class="icon-button" id="search-open" title="Search" aria-label="Search" type="button">⌕</button>
+            <button class="icon-button theme-button" id="theme-toggle" title="Toggle theme" aria-label="Toggle theme" type="button">◐</button>
+            <button class="button button-soft" id="export-button" type="button"><span>⇧</span> Export</button>
+            <button class="button button-primary" id="add-data-button" type="button"><span>＋</span> Add data</button>
+          </div>
+        </header>
+        <div class="workspace-scroll">
+          <section class="page-heading">
+            <div>
+              <div class="eyebrow"><span class="eyebrow-mark"></span> ANALYSIS WORKSPACE <span class="demo-tag" id="demo-tag">DEMO DATA</span></div>
+              <h1 id="page-title">Revenue, in focus.</h1>
+              <p id="page-subtitle">A clear view of what’s moving — and what deserves a closer look.</p>
+            </div>
+            <div class="heading-side">
+              <div class="device-mode" aria-label="Workspace layout">
+                <button data-layout="compact" title="Compact view" type="button">▯</button>
+                <button data-layout="focus" title="Focus view" type="button">◧</button>
+                <button data-layout="studio" title="Studio view" type="button">▣</button>
+              </div>
+              <button id="share-button" class="button button-outline" type="button"><span>↗</span> Share</button>
+            </div>
+          </section>
+
+          <section class="metric-grid" id="metric-grid" aria-label="Dataset summary"></section>
+
+          <div class="dashboard-grid">
+            <section class="panel chart-panel" aria-labelledby="chart-title">
+              <div class="panel-header chart-header">
+                <div><div class="panel-kicker">PERFORMANCE OVER TIME</div><h2 id="chart-title">Revenue trend</h2></div>
+                <div class="chart-controls">
+                  <select id="chart-type" aria-label="Chart type">
+                    <option value="line">Line</option><option value="bar">Bar</option><option value="area">Area</option><option value="scatter">Scatter</option><option value="histogram">Histogram</option><option value="donut">Donut</option>
+                  </select>
+                  <button class="icon-button small" id="chart-download" aria-label="Download chart" title="Download chart" type="button">⇩</button>
+                  <button class="icon-button small" id="chart-menu" aria-label="Chart options" title="Chart options" type="button">···</button>
+                </div>
+              </div>
+              <div class="axis-controls"><label>Horizontal <select id="x-column"></select></label><span>×</span><label>Measure <select id="y-column"></select></label><span class="chart-note">Tap a point to ask about it</span></div>
+              <div id="chart-container" class="chart-container" role="img" aria-label="Interactive dataset chart"></div>
+              <div class="chart-legend" id="chart-legend"></div>
+            </section>
+
+            <aside class="panel analyst-panel" aria-labelledby="analyst-title">
+              <div class="analyst-head">
+                <span class="analyst-symbol">✳</span><div><div class="panel-kicker">YOUR ANALYST</div><h2 id="analyst-title">A closer look</h2></div>
+                <button class="icon-button small" id="assistant-menu" title="Assistant options" type="button">···</button>
+              </div>
+              <div class="analyst-scroll" id="analyst-feed">
+                <div class="assistant-intro"><div class="assistant-mark">✳</div><div><strong>Here’s what stands out</strong><small>Based on the active dataset</small></div></div>
+                <div id="finding-list" class="finding-list"></div>
+                <div class="conversation" id="conversation" aria-live="polite"></div>
+              </div>
+              <div class="suggestions" id="suggestion-list"></div>
+              <form class="ask-form" id="ask-form">
+                <textarea id="question-input" rows="1" maxlength="1000" placeholder="Ask about this dataset…" aria-label="Ask a question about this dataset"></textarea>
+                <div class="ask-toolbar"><span><span class="privacy-icon">⌑</span> <span id="privacy-hint">Summary only</span></span><button class="send-button" id="send-question" aria-label="Send question" type="submit">↑</button></div>
+              </form>
+              <div class="provider-caption"><span class="status-dot" id="ai-status-dot"></span><span id="ai-provider-label">Local analysis · private by default</span><button id="provider-shortcut" type="button">Settings</button></div>
+            </aside>
+          </div>
+
+          <section class="panel data-panel" id="data-panel">
+            <div class="panel-header data-header">
+              <div><div class="panel-kicker">ACTIVE DATASET <span class="table-badge" id="table-source">DEMO</span></div><h2 id="dataset-title">Northstar orders</h2></div>
+              <div class="data-actions"><div class="table-search"><span>⌕</span><input id="table-search" type="search" placeholder="Search records…" aria-label="Search records" /></div><button class="button button-soft" id="download-csv" type="button"><span>⇩</span> CSV</button><button class="icon-button small" id="dataset-menu" title="Dataset options" type="button">···</button></div>
+            </div>
+            <div class="table-meta" id="table-meta"></div>
+            <div class="table-wrap"><table id="data-table"><thead></thead><tbody></tbody></table></div>
+            <div class="table-footer"><span id="table-count"></span><button id="show-all-data" type="button">Open full data explorer <span>→</span></button></div>
+          </section>
+
+          <section class="panel notebook-panel hidden" id="notebook-panel">
+            <div class="panel-header notebook-header"><div><div class="panel-kicker">FIELD NOTES</div><h2>Keep the thread of thought.</h2></div><span class="autosave-note"><span class="status-dot"></span> Saved locally</span></div>
+            <div class="notebook-grid">
+              <div class="note-writing"><label for="note-input">Project notes</label><textarea id="note-input" placeholder="Capture a thought, a question, or the next thing to explore…"></textarea><div class="note-meta">Private to this device · autosaves as you write</div></div>
+              <div class="sketch-card"><div class="sketch-header"><div><b>Insight sketch</b><small>Draw with touch, mouse or supported stylus</small></div><div class="sketch-tools"><button class="tool-button active" data-pen="pen" title="Pen" type="button">✎</button><button class="tool-button" data-pen="eraser" title="Eraser" type="button">⌫</button><button id="clear-canvas" class="tool-button" title="Clear drawing" type="button">↻</button></div></div><canvas id="drawing-canvas" aria-label="Drawing canvas"></canvas><div class="note-meta">Pointer Events input · Browser does not expose PencilKit features</div></div>
+            </div>
+            <div class="notebook-context"><span class="context-glyph">◷</span><span><b>Connected to this analysis</b><small>Your note stays with the current project and dataset.</small></span><button data-view="overview" type="button">Return to analysis →</button></div>
+          </section>
+
+          <section class="panel reports-panel hidden" id="reports-panel">
+            <div class="panel-header"><div><div class="panel-kicker">SHAREABLE OUTPUT</div><h2>Take your analysis further.</h2><p>Export a local report from the active project. AI findings are included only when they were generated through a configured provider.</p></div></div>
+            <div class="report-actions"><button id="report-html" class="report-card" type="button"><span class="report-icon">▤</span><b>Analysis report</b><small>HTML with summary, findings and chart</small><span class="report-arrow">↓</span></button><button id="report-json" class="report-card" type="button"><span class="report-icon">◫</span><b>Project snapshot</b><small>JSON with notes, profile and chart setup</small><span class="report-arrow">↓</span></button></div>
+          </section>
+        </div>
+      </main>
+
+      <input id="file-input" type="file" accept=".csv,.tsv,.json,.xlsx" multiple hidden />
+      <div class="toast-region" id="toast-region" aria-live="polite"></div>
+
+      <dialog class="settings-dialog" id="settings-dialog">
+        <form method="dialog" class="dialog-head"><div><div class="panel-kicker">PREFERENCES</div><h2>Workspace settings</h2></div><button class="icon-button" aria-label="Close" value="close">×</button></form>
+        <div class="settings-body">
+          <label class="setting-row"><span><b>AI provider</b><small>API keys are configured on the server</small></span><select id="provider-select"><option value="auto">Automatic</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic Claude</option></select></label>
+          <label class="setting-row"><span><b>Include sample rows</b><small>Send up to five rows with questions</small></span><input id="sample-consent" type="checkbox" /></label>
+          <div class="settings-status" id="provider-status">Checking server configuration…</div>
+          <div class="settings-note"><b>Your data stays local by default.</b><p>Files, notes and calculations stay in this browser. When you ask a provider, only the prompt and computed summary are sent unless sample rows are enabled.</p></div>
+          <button id="clear-workspace" class="button button-danger" type="button">Clear local workspace</button>
+        </div>
+      </dialog>
+      <dialog class="search-dialog" id="search-dialog">
+        <form method="dialog" class="search-dialog-form"><span>⌕</span><input id="global-search" type="search" placeholder="Find a project, dataset, note…" autocomplete="off" /><button class="keyboard-key">ESC</button></form>
+        <div id="search-results" class="search-results"></div>
+      </dialog>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
