@@ -6,7 +6,7 @@ Tessera is a local-first data analysis studio for turning datasets into clear, i
 
 - Import CSV, TSV and JSON datasets in the browser, plus basic XLSX workbooks through the local Node service.
 - Inspect columns, missing cells, duplicate rows, distributions and IQR outliers.
-- Parse uploads and profile large datasets in a Web Worker when the browser supports it.
+- Parse uploads and profile datasets in a Web Worker when the browser supports it (up to 250,000 rows, 100 columns and 2.5 million cells per import).
 - Explore data in a searchable, sortable table and build bar, line, area, scatter, histogram and donut charts.
 - Ask for deterministic calculations locally, or send a compact analysis summary to OpenAI or Anthropic through the server.
 - Keep projects, data, chat, notes and touch/Pencil drawings in IndexedDB.
