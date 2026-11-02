@@ -618,7 +618,7 @@ function renderConversation() {
     }
     feed.append(item);
   });
-  const scroll = byId('analyst-scroll');
+  const scroll = byId('analyst-feed');
   scroll.scrollTop = scroll.scrollHeight;
 }
 
@@ -724,8 +724,10 @@ async function importFiles(files) {
 async function ensureDatasetProfile(dataset) {
   if (dataset.profile) return dataset.profile;
   const profile = await runDataWorker('profile', { rows: dataset.rows || [], columns: dataset.columns || [] });
-  dataset.profile = profile;
-  if (dataset.id !== DEMO_DATASET.id) await saveDataset(dataset).catch(function () {});
+  const profiledDataset = { ...dataset, profile };
+  const index = state.datasets.findIndex(function (item) { return item.id === dataset.id; });
+  if (index !== -1) state.datasets[index] = profiledDataset;
+  if (dataset.id !== DEMO_DATASET.id) await saveDataset(profiledDataset).catch(function () {});
   return profile;
 }
 
