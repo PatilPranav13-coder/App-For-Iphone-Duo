@@ -2,6 +2,8 @@ import { inflateRawSync } from 'node:zlib';
 import { normalize as normalizePath, join as joinPath } from 'node:path/posix';
 
 const MAX_ROWS = 250000;
+const MAX_COLUMNS = 100;
+const MAX_CELLS = 2500000;
 const MAX_UNCOMPRESSED = 180 * 1024 * 1024;
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
@@ -34,7 +36,7 @@ export function parseXlsxBuffer(buffer) {
     while ((cellMatch = cellPattern.exec(rowMatch[1]))) {
       const reference = getAttribute(cellMatch[1], 'r');
       const columnIndex = reference ? columnIndexFromReference(reference) : cells.length;
-      if (columnIndex < 0 || columnIndex > 500) throw new Error('The workbook contains an unsupported column position.');
+      if (columnIndex < 0 || columnIndex >= MAX_COLUMNS) throw new Error('This release can import up to 100 columns at a time.');
       cells[columnIndex] = readCell(cellMatch[1], cellMatch[2] || '', sharedStrings);
     }
     matrix.push(cells);
@@ -43,6 +45,8 @@ export function parseXlsxBuffer(buffer) {
   if (firstNonempty < 0 || firstNonempty === matrix.length - 1) throw new Error('The first worksheet does not contain both a header and data rows.');
   const headerRow = matrix[firstNonempty];
   const width = Math.max.apply(null, matrix.slice(firstNonempty).map(function (row) { return row.length; }));
+  if (width > MAX_COLUMNS) throw new Error('This release can import up to 100 columns at a time.');
+  if ((matrix.length - firstNonempty - 1) * width > MAX_CELLS) throw new Error('This dataset exceeds the 2.5 million cell import limit.');
   const columns = uniqueHeaders(Array.from({ length: width }, function (_, index) { return headerRow[index]; }));
   const rows = [];
   for (let i = firstNonempty + 1; i < matrix.length; i += 1) {
