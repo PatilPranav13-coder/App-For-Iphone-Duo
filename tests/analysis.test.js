@@ -53,3 +53,11 @@ test('local quality answers cite actual scan results', function () {
   assert.match(answer.text, /1 duplicate rows/);
   assert.ok(makeFindings(rows, profile).some(function (finding) { return finding.kind === 'quality'; }));
 });
+
+test('selected chart questions calculate values from the matching source records', function () {
+  const rows = [{ month: '2025-01', sales: 10 }, { month: '2025-01', sales: 15 }, { month: '2025-02', sales: 8 }];
+  const profile = profileDataset(rows, ['month', 'sales']);
+  const answer = answerLocally('What happened at the selected point?', rows, profile, { label: '2025-01' }, { x: 'month', y: 'sales' });
+  assert.match(answer.text, /2 valid sales values/);
+  assert.match(answer.text, /25/);
+});

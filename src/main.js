@@ -251,7 +251,10 @@ function updateChart() {
     toast(point.label + ' selected · ask a follow-up about this point.');
     scheduleSave();
   });
-  byId('chart-legend').innerHTML = '<span class="legend-item"><i class="legend-dot"></i>' + escapeHtml(state.chart.y) + '</span><span class="chart-note">Select a value to follow up with context</span>';
+  const shown = Number(byId('chart-container').dataset.pointsShown || 0);
+  const total = Number(byId('chart-container').dataset.pointsTotal || 0);
+  const pointNote = shown < total ? 'Showing ' + formatCount(shown) + ' of ' + formatCount(total) + ' groups · ' : '';
+  byId('chart-legend').innerHTML = '<span class="legend-item"><i class="legend-dot"></i>' + escapeHtml(state.chart.y) + '</span><span class="chart-note">' + pointNote + 'Select a value to follow up with context</span>';
 }
 
 function renderFindings() {

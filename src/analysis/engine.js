@@ -1,5 +1,7 @@
 const DEMO_FLAG = 'tessera-demo';
 const MAX_IMPORT_ROWS = 250000;
+const MAX_IMPORT_COLUMNS = 100;
+const MAX_IMPORT_CELLS = 2500000;
 
 export const DEMO_DATASET = Object.freeze({
   id: DEMO_FLAG,
@@ -69,6 +71,8 @@ export function parseTextTable(text, delimiter) {
   const columns = rows.shift().map(function (value, index) {
     return value.trim() || 'Column ' + (index + 1);
   });
+  if (columns.length > MAX_IMPORT_COLUMNS) throw new Error('This release can import up to 100 columns at a time.');
+  if ((rows.length * columns.length) > MAX_IMPORT_CELLS) throw new Error('This dataset exceeds the 2.5 million cell import limit.');
   const records = rows.map(function (values) {
     return Object.fromEntries(columns.map(function (column, index) {
       const raw = (values[index] ?? '').trim();
@@ -91,11 +95,14 @@ export async function parseDatasetFile(file) {
   if (extension === 'json') {
     const data = JSON.parse(await file.text());
     const rows = Array.isArray(data) ? data : (Array.isArray(data.rows) ? data.rows : null);
-    if (!rows || !rows.length || !rows[0] || typeof rows[0] !== 'object' || Array.isArray(rows[0])) {
+    if (!rows || !rows.length || !rows[0] || typeof rows[0] !== 'object' || Array.isArray(rows[0]) ||
+      rows.some(function (row) { return !row || typeof row !== 'object' || Array.isArray(row); })) {
       throw new Error('JSON should contain a non-empty array of row objects.');
     }
     if (rows.length > MAX_IMPORT_ROWS) throw new Error('This release can import up to 250,000 rows at a time.');
     const columns = Array.from(new Set(rows.flatMap(function (item) { return Object.keys(item); })));
+    if (columns.length > MAX_IMPORT_COLUMNS) throw new Error('This release can import up to 100 columns at a time.');
+    if (rows.length * columns.length > MAX_IMPORT_CELLS) throw new Error('This dataset exceeds the 2.5 million cell import limit.');
     return { rows: rows.map(function (record) { return Object.fromEntries(columns.map(function (column) { return [column, record[column] ?? null]; })); }), columns };
   }
   if (extension === 'xlsx' || extension === 'xls') {

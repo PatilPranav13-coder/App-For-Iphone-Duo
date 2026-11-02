@@ -5,6 +5,8 @@ const COLORS = ['#574ce3', '#27a984', '#ec9a4b', '#6aa8dc', '#e57697', '#9b81d8'
 
 export function renderChart(container, rows, settings, onPoint) {
   container.replaceChildren();
+  container.dataset.pointsShown = '0';
+  container.dataset.pointsTotal = '0';
   if (!rows.length) return;
   const width = 760;
   const height = 294;
@@ -15,7 +17,22 @@ export function renderChart(container, rows, settings, onPoint) {
   const values = settings.x && settings.y ? aggregateRows(rows, settings.x, settings.y, 'sum') : [];
   let points = values.map(function (item) { return { xLabel: item.label, yValue: item.value, count: item.count }; });
   if (chartType === 'histogram') points = histogram(rows, settings.y);
-  if (chartType === 'scatter') points = rows.map(function (row, i) { return { xLabel: row[settings.x], yValue: Number(row[settings.y]), count: 1, raw: row, i }; }).filter(function (item) { return Number.isFinite(item.yValue) && Number.isFinite(Number(item.xLabel)); }).slice(0, 600);
+  if (chartType === 'scatter') {
+    const valid = rows.map(function (row, i) { return { xLabel: row[settings.x], yValue: Number(row[settings.y]), count: 1, raw: row, i }; })
+      .filter(function (item) { return Number.isFinite(item.yValue) && Number.isFinite(Number(item.xLabel)); });
+    points = decimate(valid, 600);
+  }
+  const totalPoints = points.length;
+  if (chartType === 'bar') points = points.slice(0, 40);
+  if (chartType === 'donut' && points.length > 7) {
+    const ordered = points.slice().sort(function (a, b) { return b.yValue - a.yValue; });
+    const head = ordered.slice(0, 6);
+    const rest = ordered.slice(6);
+    points = head.concat([{ label: 'Other', yValue: rest.reduce(function (sum, item) { return sum + item.yValue; }, 0), count: rest.reduce(function (sum, item) { return sum + item.count; }, 0) }]);
+  }
+  else if (chartType === 'line' || chartType === 'area') points = decimate(points, 800);
+  container.dataset.pointsShown = String(points.length);
+  container.dataset.pointsTotal = String(totalPoints);
   if (!points.length) {
     container.innerHTML = '<div class="chart-empty">Choose a numeric column and a grouping to build a chart.</div>';
     return;
@@ -113,6 +130,13 @@ function histogram(rows, column) {
     buckets[index].count += 1;
   });
   return buckets;
+}
+
+function decimate(points, limit) {
+  if (points.length <= limit) return points;
+  return Array.from({ length: limit }, function (_, index) {
+    return points[Math.round(index * (points.length - 1) / (limit - 1))];
+  });
 }
 
 function drawDonut(container, points, onPoint) {
