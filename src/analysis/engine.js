@@ -278,10 +278,28 @@ export function answerLocally(question, rows, profile, selectedPoint, chart) {
   const findings = makeFindings(rows, profile);
   const reference = function (label, value) { return { label, value: String(value) }; };
   if (selectedPoint && chart?.x && chart?.y && /this point|selected|here|this month|why did|why is/.test(query)) {
-    const selectedRows = rows.filter(function (row) {
-      const value = row[chart.x] instanceof Date ? row[chart.x].toISOString().slice(0, 10) : row[chart.x];
-      return String(value) === selectedPoint.label;
-    });
+    let selectedRows;
+    if (selectedPoint.type === 'scatter' && Number.isInteger(selectedPoint.rowIndex) && rows[selectedPoint.rowIndex]) {
+      selectedRows = [rows[selectedPoint.rowIndex]];
+    } else if (selectedPoint.type === 'histogram' && Number.isFinite(selectedPoint.lower) && Number.isFinite(selectedPoint.upper)) {
+      const values = rows.map(function (row) { return Number(row[chart.y]); }).filter(Number.isFinite);
+      const max = values.reduce(function (result, value) { return Math.max(result, value); }, -Infinity);
+      selectedRows = rows.filter(function (row) {
+        const value = Number(row[chart.y]);
+        return Number.isFinite(value) && value >= selectedPoint.lower && (selectedPoint.upper === max ? value <= selectedPoint.upper : value < selectedPoint.upper);
+      });
+    } else if (selectedPoint.type === 'donut' && selectedPoint.otherBucket) {
+      const topLabels = new Set(aggregateRows(rows, chart.x, chart.y, 'sum').slice().sort(function (a, b) { return b.value - a.value; }).slice(0, 6).map(function (item) { return item.label; }));
+      selectedRows = rows.filter(function (row) {
+        const raw = row[chart.x] instanceof Date ? row[chart.x].toISOString().slice(0, 10) : row[chart.x];
+        return !topLabels.has(String(raw ?? 'Missing'));
+      });
+    } else {
+      selectedRows = rows.filter(function (row) {
+        const value = row[chart.x] instanceof Date ? row[chart.x].toISOString().slice(0, 10) : row[chart.x];
+        return String(value) === selectedPoint.label;
+      });
+    }
     const selectedValues = selectedRows.map(function (row) { return Number(row[chart.y]); }).filter(Number.isFinite);
     if (selectedValues.length) {
       const total = selectedValues.reduce(function (sum, value) { return sum + value; }, 0);

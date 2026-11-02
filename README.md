@@ -7,13 +7,14 @@ Tessera is a local-first data analysis studio for turning datasets into clear, i
 - Import CSV, TSV and JSON datasets in the browser, plus basic XLSX workbooks through the local Node service.
 - Inspect columns, missing cells, duplicate rows, distributions and IQR outliers.
 - Parse uploads and profile datasets in a Web Worker when the browser supports it (up to 250,000 rows, 100 columns and 2.5 million cells per import).
-- Explore data in a searchable, sortable table and build bar, line, area, scatter, histogram and donut charts.
-- Ask for deterministic calculations locally, or send a compact analysis summary to OpenAI or Anthropic through the server.
-- Keep projects, data, chat, notes and touch/Pencil drawings in IndexedDB.
-- Export filtered data, chart SVGs and a structured HTML report.
-- Install as a PWA and adapt to compact, focus and studio layouts.
+- Explore data in a searchable, sortable table and build selectable bar, line, area, scatter, histogram and donut charts. Filter to a selected group, drill into another category, and zoom or pan long series.
+- Ask questions through a bounded OpenAI Responses or Anthropic Messages tool loop. Approved tools run against the active dataset in the browser; model-generated code and SQL are never executed. Calculation results are returned for explanation, and sample rows are sent only after opt-in.
+- Keep project-isolated datasets, conversations and branches, chart state, notes, drawings, panel arrangements and scroll positions in IndexedDB. Schema v2 migrates the earlier workspace, saves revisions and autosaves meaningful changes while you work.
+- Restore an earlier project revision and export filtered data, chart SVGs, a structured HTML report or a project snapshot.
+- Use a pressure-aware Pointer Events notebook with stable normalized strokes, highlighter, eraser, shapes, lasso, undo/redo, zoom and pan. Strokes remain editable records rather than a flattened image.
+- Install as a PWA and move between compact, focus and studio layouts. Automatic mode feature-detects viewport segmentation when available and otherwise uses viewport size; the user can choose a mode, panel order, navigation width and inspector width.
 
-This is an honest first product slice. User accounts, cloud sync, collaboration, advanced statistical tests, presentation editing and native PencilKit are not implemented. The current server is intended for a trusted single-user/local deployment; do not expose it publicly without adding authentication, persistent cloud storage and deployment hardening.
+This remains a local-first single-user product. User accounts, cloud sync, collaboration, advanced statistical tests, handwriting recognition and native PencilKit are not implemented. The web notebook does not provide native iOS palm rejection, and its chart association is contextual rather than an ink overlay drawn directly on the SVG. A later sync service can use stable project and dataset IDs plus workspace revisions, then resolve concurrent edits by comparing revision ancestry and creating a conflict copy for review. The current server is intended for a trusted single-user/local deployment; do not expose it publicly without adding authentication, persistent cloud storage and deployment hardening.
 
 ## Run locally
 
@@ -29,7 +30,7 @@ No AI key is needed for uploads, profiling, charts, notes, exports or local anal
 
 ## Privacy
 
-CSV, TSV and JSON parsing, profiling, charting, notes and deterministic answers run in the browser. An XLSX file is sent to the local Node process for parsing and is not written to disk. The default AI request contains the question, dataset profile, computed findings, chart context and a small number of prior turns. It does not include raw rows. Settings has an opt-in control to include up to five sample rows. Provider requests go from the Node server to the selected provider; review each provider's API terms before sending sensitive data.
+CSV, TSV and JSON parsing, profiling, charting, notes and deterministic calculations run in the browser. An XLSX file is sent to the local Node process for parsing and is not written to disk. The default AI request contains the question, dataset profile, computed findings, chart context and a small number of prior turns. Tool responses contain calculated results; row samples are omitted unless the user opts in to include up to five sample rows. Provider requests go from the Node server to the selected provider; review each provider's API terms before sending sensitive data.
 
 IndexedDB data is stored in the current browser profile and is not encrypted. Clearing browser storage deletes local projects. Server-side API usage shown in the health endpoint is a process-local request count, not provider billing.
 

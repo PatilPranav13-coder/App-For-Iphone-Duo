@@ -1,7 +1,8 @@
-const CACHE_NAME = 'tessera-shell-v1';
+const CACHE_NAME = 'tessera-shell-v2';
 const APP_SHELL = [
   '/', '/manifest.json', '/assets/icon.svg', '/assets/tessera-mark.svg',
   '/src/styles.css', '/src/main.js', '/src/analysis/engine.js',
+  '/src/analysis/tool-registry.js', '/src/workspace/state.js',
   '/src/storage/database.js', '/src/visualization/chart.js',
   '/src/foldable/posture.js', '/src/notebook/canvas.js',
   '/src/workers/data.worker.js'
